@@ -1,12 +1,12 @@
 use eframe::egui;
-use crate::generate::{Map, Biome};
+use crate::world::{World, Biome};
 
 pub struct WorldGenApp {
-    map: Map,
+    map: World,
 }
 
 impl WorldGenApp {
-    pub fn new(mut map: Map) -> Self {
+    pub fn new(map: World) -> Self {
         Self { map }
     }
 }
@@ -16,19 +16,19 @@ impl eframe::App for WorldGenApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let painter = ui.painter();
             
-            // Calculer l'échelle pour adapter la carte à la fenêtre
+            
             let available_rect = ui.available_rect_before_wrap();
             let scale_x = available_rect.width() / self.map.width;
             let scale_y = available_rect.height() / self.map.height;
-            let scale = scale_x.min(scale_y) * 0.9; // 90% pour laisser une marge
+            let scale = scale_x.min(scale_y) * 0.9; 
             
             let offset_x = available_rect.left() + (available_rect.width() - self.map.width * scale) / 2.0;
             let offset_y = available_rect.top() + (available_rect.height() - self.map.height * scale) / 2.0;
             
-            // Dessiner chaque cellule
+            
             for cell in &self.map.cells {
                 if cell.polygon.len() >= 3 {
-                    // Convertir les points du polygone
+                    
                     let points: Vec<egui::Pos2> = cell.polygon.iter()
                         .map(|(x, y)| {
                             egui::Pos2::new(
@@ -39,8 +39,8 @@ impl eframe::App for WorldGenApp {
                         .collect();
                     
                     let color = match cell.biome {
-                        Biome::Ocean => egui::Color32::from_rgb(50, 120, 200),  // Bleu océan
-                        Biome::Forest => egui::Color32::from_rgb(34, 139, 34),  // Vert forêt
+                        Biome::Ocean => egui::Color32::from_rgb(50, 120, 200),  // Blue
+                        Biome::Forest => egui::Color32::from_rgb(34, 139, 34),  // Green
                     };
                     
                     painter.add(egui::Shape::convex_polygon(
@@ -51,13 +51,11 @@ impl eframe::App for WorldGenApp {
                 }
             }
             
-            // Afficher des informations
-            ui.label(format!("Cellules: {}", self.map.cells.len()));
-            ui.label(format!("Taille: {}x{}", self.map.width, self.map.height));
+            ui.label(format!("Cell: {}", self.map.cells.len()));
+            ui.label(format!("Size: {}x{}", self.map.width, self.map.height));
             
-            if ui.button("Générer la carte").clicked() {
-                self.map = Map::generate(1200.0, 800.0, 1600);
-                
+            if ui.button("New Map").clicked() {
+                self.map = World::new(1920.0, 1080.0, 5000);
             }
         });
     }

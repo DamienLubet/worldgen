@@ -3,7 +3,7 @@ use rand::distr::Uniform;
 use voronator::{VoronoiDiagram, delaunator::Point};
 use noise::{NoiseFn, Perlin};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Biome{
     Ocean,
     Forest,
@@ -17,23 +17,26 @@ pub struct Cell{
 }
 
 #[derive(Debug)]
-pub struct Map{
-    pub cells: Vec<Cell>,
+pub struct World{
+    pub seed: u32,   // Random seed for map generation
+    pub cells: Vec<Cell>,   // Cells of the world map
     pub width: f32,
     pub height: f32,
 }
 
-impl Map{
-    pub fn generate(width: f32, height: f32, num_cells: usize) -> Self {
+impl World{
+    pub fn new(width: f32, height: f32, num_cells: usize) -> Self {
         let mut cells: Vec<Cell> = Vec::new();  
 
         // Initialize random number generator
         let mut rng = rand::rng();
         let range1 = Uniform::new(0., width).unwrap();
         let range2 = Uniform::new(0., height).unwrap();
-        let points: Vec<(f64, f64)> = (0..num_cells)
+        let mut points: Vec<(f64, f64)> = (0..num_cells)
             .map(|_| (rng.sample(&range1) as f64, rng.sample(&range2) as f64))
             .collect();
+
+        lloyd_relaxation(&mut points, width.into(), height.into(), 2);
 
         // Create Voronoi diagram
         let diagram = 
@@ -50,12 +53,12 @@ impl Map{
             let site_point = points[i];
             let nx = site_point.0 * noise_scale;
             let ny = site_point.1 * noise_scale;
-            let mut noise_value = fbm(&perlin, nx, ny, 8);
+            let mut noise_value = fbm(&perlin, nx, ny, 4);
 
             let dx = site_point.0 - (width as f64) / 2.0;
             let dy = site_point.1 - (height as f64) / 2.0;
             let distance = ((dx * dx + dy * dy).sqrt()) / ((width as f64) / 2.0) * 0.5;
-            noise_value -= distance; 
+            noise_value -= distance * 2.0; // Adjust noise based on distance from center
 
 
             // Determine biome based on noise value
@@ -65,14 +68,10 @@ impl Map{
                 Biome::Forest
             };
 
-
-            cells.push(Cell { polygon, position: (nx as f32, ny as f32), biome });
-
+            cells.push(Cell { polygon, position: (points[i].0 as f32, points[i].1 as f32), biome });
         }
-
-        Self { cells, width, height }
+        Self { seed, cells, width, height }
     }
-
 
     pub fn display(&self) {
         println!("{} cellules générées", self.cells.len());
@@ -88,7 +87,6 @@ impl Map{
     }
 }
 
-
 // Fractal Brownian Motion (FBM) for Perlin noise
 fn fbm(perlin: &Perlin, x: f64, y: f64, octaves: usize) -> f64 {
     let mut value = 0.0;
@@ -103,29 +101,35 @@ fn fbm(perlin: &Perlin, x: f64, y: f64, octaves: usize) -> f64 {
     value
 }
 
-fn calculate_polygon_centroid(polygon: &[(f32, f32)]) -> (f32, f32) {
-     let mut area = 0.0;
-    let mut cx = 0.0;
-    let mut cy = 0.0;
+fn lloyd_relaxation(points: &mut Vec<(f64, f64)>, width: f64, height: f64, iterations: usize) {
+    // Lloyd relaxation by moving points to the centroids of their Voronoi cells using the average of the cell points
+    for _ in 0..iterations {
+        let diagram = VoronoiDiagram::<Point>::from_tuple(&(0., 0.), &(width, height), &points).unwrap();
+        let mut new_points = Vec::with_capacity(points.len());
+        for (i,cell) in diagram.cells().iter().enumerate() {
+            let polygon: Vec<(f64, f64)> = cell.points().iter()
+                .map(|p| (p.x, p.y))
+                .collect();
 
-    for i in 0..polygon.len() {
-        let j = (i + 1) % polygon.len();
-        let (x0, y0) = polygon[i];
-        let (x1, y1) = polygon[j];
+            if polygon.is_empty() {
+                new_points.push(points[i]);
+                continue;
+            }
+            // Calculate centroid by averaging the points
+            let (mut cx, mut cy) = (0.0, 0.0);
+            for &(x, y) in &polygon {
+                cx += x;
+                cy += y;
+            }
+            cx /= polygon.len() as f64;
+            cy /= polygon.len() as f64;
 
-        let a = x0 * y1 - x1 * y0;
-        area += a;
-        cx += (x0 + x1) * a;
-        cy += (y0 + y1) * a;
+            // Clamp to map boundaries
+            cx = cx.clamp(0.0, width);
+            cy = cy.clamp(0.0, height);
+
+            new_points.push((cx, cy));
+        }
+        *points = new_points;
     }
-    area *= 0.5;
-
-    if area.abs() < 1e-10{
-        let sum_x = polygon.iter().map(|&(x, _)| x).sum::<f32>();
-        let sum_y = polygon.iter().map(|&(_, y)| y).sum::<f32>();
-        return (sum_x / polygon.len() as f32, sum_y / polygon.len() as f32)
-    } 
-    cx /= 6.0 * area;
-    cy /= 6.0 * area;
-    (cx, cy)
 }

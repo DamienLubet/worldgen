@@ -1,22 +1,19 @@
-use rand::prelude::*;
-use rand::distr::Uniform;
-use voronator::{VoronoiDiagram, delaunator::Point};
+
+mod world;
+mod ui;
+
+use world::World;
+use ui::WorldGenApp;
 
 fn main() {
-    let mut rng = rand::rng();
-    let range1 = Uniform::new(0., 100.).unwrap();
-    let range2 = Uniform::new(0., 100.).unwrap();
-    let points: Vec<(f64, f64)> = (0..100)
-        .map(|_| (rng.sample(&range1), rng.sample(&range2)))
-        .collect();
-
-    let diagram = VoronoiDiagram::<Point>::from_tuple(&(0., 0.), &(100., 100.), &points).unwrap();
-     
-    for cell in diagram.cells() {
-        let p: Vec<(f32, f32)> = cell.points().into_iter()
-            .map(|x| (x.x as f32, x.y as f32))
-            .collect();
-         
-        println!("{:?}", p);
-    }
+    let map = World::new(1920.0, 1080.0, 5000);
+    let app = WorldGenApp::new(map);
+    let _ = eframe::run_native(
+        "World Generation Biomes",
+        eframe::NativeOptions::default(),
+        Box::new(move |cc| {
+            cc.egui_ctx.set_visuals(egui::Visuals::dark());
+            Ok(Box::new(app))
+        }),
+    );
 }
