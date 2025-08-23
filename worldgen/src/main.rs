@@ -1,12 +1,8 @@
-
-mod world;
-mod ui;
-
-use world::World;
-use ui::WorldGenApp;
+use worldgen::world::World;
+use worldgen::ui::WorldGenApp;
 
 fn main() {
-    let map = World::new(1920.0, 1080.0, 5000);
+    let map = World::new(1920.0, 1080.0, 10000);
     let app = WorldGenApp::new(map);
     let _ = eframe::run_native(
         "World Generation Biomes",

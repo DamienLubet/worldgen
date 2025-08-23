@@ -1,5 +1,6 @@
 use eframe::egui;
-use crate::world::{World, Biome};
+use crate::world::{World};
+use crate::biome::Biome;
 
 pub struct WorldGenApp {
     map: World,
@@ -41,6 +42,7 @@ impl eframe::App for WorldGenApp {
                     let color = match cell.biome {
                         Biome::Ocean => egui::Color32::from_rgb(50, 120, 200),  // Blue
                         Biome::Forest => egui::Color32::from_rgb(34, 139, 34),  // Green
+                        Biome::Mountain => egui::Color32::from_rgb(87, 29, 29),  // Brown
                     };
                     
                     painter.add(egui::Shape::convex_polygon(
@@ -55,7 +57,7 @@ impl eframe::App for WorldGenApp {
             ui.label(format!("Size: {}x{}", self.map.width, self.map.height));
             
             if ui.button("New Map").clicked() {
-                self.map = World::new(1920.0, 1080.0, 5000);
+                self.map = World::new(1920.0, 1080.0, 16000);
             }
         });
     }
