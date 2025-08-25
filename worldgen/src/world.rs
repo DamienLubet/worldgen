@@ -2,12 +2,14 @@ use rand::prelude::*;
 use rand::distr::Uniform;
 use voronator::{VoronoiDiagram, delaunator::Point};
 use noise::{NoiseFn, Perlin};
+use crate::noise::*;
 use crate::biome::Biome;
 use crate::cell::Cell;
 
 #[derive(Debug)]
 pub struct World{
     pub seed: u32,   // Random seed for map generation
+    pub num_cells: usize,
     pub cells: Vec<Cell>,   // Cells of the world map
     pub width: f32,
     pub height: f32,
@@ -21,13 +23,13 @@ impl World{
         let seed: u32 = rand::rng().random();
         let cells = create_cells(diagram, points, width, height, seed);
 
-        Self { seed, cells, width, height }
+        Self { seed, num_cells, cells, width, height }
     }
 
     pub fn display(&self) {
-        println!("{} cellules générées", self.cells.len());
+        println!("{} cells generated", self.num_cells);
         for i in 0..self.cells.len() {
-            println!("{:?}", self.cells[i]);
+            self.cells[i].display();
         }
     }
 
@@ -61,27 +63,24 @@ fn create_cells(diagram: VoronoiDiagram<Point>, points: Vec<(f64, f64)>, width: 
     let mut cells: Vec<Cell> = Vec::new();
     
     // Perlin noise
-    let perlin = Perlin::new(seed);
-    let noise_scale = 0.0025;
+    let noise = NoiseGenerator::new(seed);
 
     for (i, cell) in diagram.cells().into_iter().enumerate(){
         let polygon: Vec<(f32, f32)> = cell.points().iter().map(|p| (p.x as f32, p.y as f32)).collect();
 
-        let site_point = points[i];
-        let nx = site_point.0 * noise_scale;
-        let ny = site_point.1 * noise_scale;
-        let mut noise_value = fbm(&perlin, nx, ny, 4);
+        // Calculate elevation
+        let elevation = elevation(points[i].0, points[i].1, width.into(), height.into(), &noise);
 
-        let dx = site_point.0 - (width as f64) / 2.0;
-        let dy = site_point.1 - (height as f64) / 2.0;
-        let distance = ((dx * dx + dy * dy).sqrt()) / ((width as f64) / 2.0) * 0.5;
-        noise_value -= distance * 1.50; 
+        // Calculate temperature
+        let temperature = temperature(points[i].0, points[i].1, height.into(), elevation, &noise);
 
+        // Calculate humidity
+        let humidity = 0.0;  // TODO
 
         // Determine biome based on noise value
-        let biome = if noise_value < -0.1 {
+        let biome = if elevation < 0.30 {
             Biome::Ocean
-        } else if noise_value > 0.6 {
+        } else if elevation > 0.6 {
             Biome::Mountain
         } else {
             Biome::Forest
@@ -90,27 +89,33 @@ fn create_cells(diagram: VoronoiDiagram<Point>, points: Vec<(f64, f64)>, width: 
         cells.push(Cell::new(
             i,
             polygon,
-            (site_point.0 as f32, site_point.1 as f32),
+            (points[i].0 as f32, points[i].1 as f32),
             biome,
+            elevation,
+            temperature,
+            humidity,
         ));
     }
     
     cells
 }
 
+fn elevation(x: f64, y: f64, width: f64, height: f64, noise: &NoiseGenerator) -> f64 {
+    // Elevation calculation based on the center of the map and noise
+    let elevation = noise.height_map(x, y);
+    let dx = (x - (width as f64) / 2.0) / 2.0;
+    let dy = y - (height as f64) / 2.0;
+    let distance = ((dx * dx + dy * dy).sqrt()) / ((width as f64) / 2.0) * 0.5;
+    (elevation - distance * 1.50).clamp(0.0, 1.0)
+}
 
-// Fractal Brownian Motion (FBM) for Perlin noise
-fn fbm(perlin: &Perlin, x: f64, y: f64, octaves: usize) -> f64 {
-    let mut value = 0.0;
-    let mut amplitude = 1.0;
-    let mut frequency = 1.0;
-
-    for _ in 0..octaves {
-        value += amplitude * perlin.get([x * frequency, y * frequency]);
-        amplitude *= 0.5;
-        frequency *= 2.0;
-    }
-    value
+fn temperature(x: f64, y: f64, height: f64, altitude: f64, noise: &NoiseGenerator) -> f64 {
+    // Temperature calculation based on latitude, altitude, and noise
+    let latitude = y / height;
+    let lat_temp = 1.0 - (latitude - 0.5).abs() * 2.0; // 1.0 at equator, 0.0 at poles
+    let alt_temp = 1.0 - altitude.powf(4.0); // Decrease temperature with altitude
+    let noise_temp = noise.temperature_noise(x, y);
+    (0.6 * lat_temp + 0.2 * alt_temp + 0.2 * noise_temp).clamp(0.0, 1.0)
 }
 
 fn lloyd_relaxation(points: &mut Vec<(f64, f64)>, width: f64, height: f64, iterations: usize) {

@@ -1,4 +1,5 @@
-pub mod biome;
 pub mod world;
-pub mod ui;
 pub mod cell;
+pub mod biome;
+pub mod noise;
+pub mod ui;
