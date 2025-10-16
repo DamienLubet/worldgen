@@ -2,7 +2,7 @@ use worldgen::world::World;
 use worldgen::ui::WorldGenApp;
 
 fn main() {
-    let world: World = World::new(1920.0, 1080.0, 10000);
+    let world: World = World::new(1920, 1000);
     let app = WorldGenApp::new(world);
     let _ = eframe::run_native(
         "World Generation Biomes",
