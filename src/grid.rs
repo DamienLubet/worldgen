@@ -4,7 +4,7 @@ use rayon::prelude::*;
 
 #[derive(Debug)]
 pub struct Grid {
-    seed: u32,  
+    seed: u32,
     width: usize,
     height: usize,
     noise: NoiseGenerator,
@@ -12,8 +12,8 @@ pub struct Grid {
     pub temperature_map: Vec<f32>,
 }
 
-impl Grid{
-    pub fn new(width : usize, height: usize) -> Self {
+impl Grid {
+    pub fn new(width: usize, height: usize) -> Self {
         let seed: u32 = rand::rng().random();
 
         let size = width * height;
@@ -23,23 +23,35 @@ impl Grid{
         let noise = NoiseGenerator::new(seed);
 
         // Generate height map in parallel
-        height_map.par_iter_mut().enumerate().for_each(|(index, value)| {
-            let x = index % width;
-            let y = index / width;
-            *value = elevation(x as f32, y as f32, width as f32, height as f32, &noise)
-        });
+        height_map
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, value)| {
+                let x = index % width;
+                let y = index / width;
+                *value = elevation(x as f32, y as f32, width as f32, height as f32, &noise)
+            });
 
         // Generate temperature map in parallel
-        temperature_map.par_iter_mut().enumerate().for_each(|(index, value)| {
-            let x = index % width;
-            let y = index / width;
-            *value = temperature(x as f32, y as f32, height as f32, height_map[index], &noise);
-        });
+        temperature_map
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, value)| {
+                let x = index % width;
+                let y = index / width;
+                *value = temperature(x as f32, y as f32, height as f32, height_map[index], &noise);
+            });
 
-        Self { seed, width, height, noise, height_map, temperature_map }
+        Self {
+            seed,
+            width,
+            height,
+            noise,
+            height_map,
+            temperature_map,
+        }
     }
 }
-
 
 fn elevation(x: f32, y: f32, width: f32, height: f32, noise: &NoiseGenerator) -> f32 {
     // Elevation calculation based on the center of the map and noise

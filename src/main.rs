@@ -1,5 +1,5 @@
-use worldgen::world::World;
 use worldgen::ui::WorldGenApp;
+use worldgen::world::World;
 
 fn main() {
     let world: World = World::new(1920, 1000);

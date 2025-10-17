@@ -1,5 +1,5 @@
-use eframe::egui;
 use crate::world::World;
+use eframe::egui;
 
 pub struct WorldGenApp {
     map: World,
@@ -10,7 +10,12 @@ pub struct WorldGenApp {
 
 impl WorldGenApp {
     pub fn new(map: World) -> Self {
-        Self { map, temperature: false, texture: None, dirty: true }
+        Self {
+            map,
+            temperature: false,
+            texture: None,
+            dirty: true,
+        }
     }
 
     fn rebuild_texture(&mut self, ctx: &egui::Context) {
@@ -63,12 +68,12 @@ impl WorldGenApp {
             pixels[i] = final_color;
         }
 
-        let image = egui::ColorImage { size: [width, height], source_size: egui::vec2(width as f32, height as f32), pixels };
-        let tex = ctx.load_texture(
-            "world_map",
-            image,
-            egui::TextureOptions::NEAREST,
-        );
+        let image = egui::ColorImage {
+            size: [width, height],
+            source_size: egui::vec2(width as f32, height as f32),
+            pixels,
+        };
+        let tex = ctx.load_texture("world_map", image, egui::TextureOptions::NEAREST);
         self.texture = Some(tex);
         self.dirty = false;
     }
@@ -80,7 +85,7 @@ impl eframe::App for WorldGenApp {
             self.rebuild_texture(ctx);
         }
 
-                egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |ui| {
             // Zone scrollable pour l'image
             egui::ScrollArea::both()
                 .auto_shrink([false, false])
@@ -92,9 +97,9 @@ impl eframe::App for WorldGenApp {
                         ui.label("Aucune texture.");
                     }
                 });
-            });
+        });
 
-            // Barre de contrôle fixe en haut
+        // Barre de contrôle fixe en haut
         egui::TopBottomPanel::top("top_controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!("Size: {}x{}", self.map.width, self.map.height));
