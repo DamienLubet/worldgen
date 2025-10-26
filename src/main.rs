@@ -1,8 +1,9 @@
 use worldgen::ui::WorldGenApp;
 use worldgen::world::World;
+use anyhow::Result;
 
-fn main() {
-    let world: World = World::new(1920, 1000);
+fn main() -> Result<()> {
+    let world = World::new(1920, 1000)?;
     let app = WorldGenApp::new(world);
     let _ = eframe::run_native(
         "World Generation Biomes",
@@ -12,4 +13,5 @@ fn main() {
             Ok(Box::new(app))
         }),
     );
+    Ok(())
 }

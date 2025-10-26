@@ -1,6 +1,13 @@
 use crate::noise::NoiseGenerator;
 use rand::Rng;
 use rayon::prelude::*;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum GridError {
+    #[error("Invalid grid dimensions")]
+    InvalidDimensions,
+}
 
 #[derive(Debug)]
 pub struct Grid {
@@ -8,48 +15,70 @@ pub struct Grid {
     width: usize,
     height: usize,
     noise: NoiseGenerator,
-    pub height_map: Vec<f32>,
-    pub temperature_map: Vec<f32>,
+    height_map: Vec<f32>,
+    temperature_map: Vec<f32>,
 }
 
 impl Grid {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize) -> Result<Self, GridError> {
+        if width <= 0 || height <= 0 {
+            return Err(GridError::InvalidDimensions);
+        }
+
         let seed: u32 = rand::rng().random();
 
         let size = width * height;
-        let mut height_map = vec![0.0; size];
-        let mut temperature_map = vec![0.0; size];
+        let height_map = vec![0.0; size];
+        let temperature_map = vec![0.0; size];
 
         let noise = NoiseGenerator::new(seed);
 
-        // Generate height map in parallel
-        height_map
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(index, value)| {
-                let x = index % width;
-                let y = index / width;
-                *value = elevation(x as f32, y as f32, width as f32, height as f32, &noise)
-            });
-
-        // Generate temperature map in parallel
-        temperature_map
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(index, value)| {
-                let x = index % width;
-                let y = index / width;
-                *value = temperature(x as f32, y as f32, height as f32, height_map[index], &noise);
-            });
-
-        Self {
+        Ok(Self {
             seed,
             width,
             height,
             noise,
             height_map,
             temperature_map,
-        }
+        })
+    }
+
+    pub fn generate(&mut self) {
+        let width_f = self.width as f32;
+        let height_f = self.height as f32;
+
+        // Generate height map in parallel
+        self.height_map
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, value)| {
+                let x = (index % self.width) as f32;
+                let y = (index / self.width) as f32;
+                *value = elevation(x, y, width_f, height_f, &self.noise);
+            });
+
+        // Generate temperature map in parallel
+        self.temperature_map
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(index, value)| {
+                let x = (index % self.width) as f32;
+                let y = (index / self.width) as f32;
+                let altitude = self.height_map[index];
+                *value = temperature(x, y, height_f, altitude, &self.noise);
+            });
+    }
+
+    pub fn get_height_at(&self, x: usize, y: usize) -> f32 {
+        self.height_map[y * self.width + x]
+    }
+
+    pub fn get_temperature_at(&self, x: usize, y: usize) -> f32 {
+        self.temperature_map[y * self.width + x]
+    }
+    
+    pub fn get_seed(&self) -> u32 {
+        self.seed
     }
 }
 
@@ -69,4 +98,46 @@ fn temperature(x: f32, y: f32, height: f32, altitude: f32, noise: &NoiseGenerato
     let alt_temp = 1.0 - altitude.powf(4.0); // Decrease temperature with altitude
     let noise_temp = noise.temperature_noise(x, y);
     (0.6 * lat_temp + 0.2 * alt_temp + 0.2 * noise_temp).clamp(0.0, 1.0)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_grid_creation() {
+        let grid = Grid::new(10, 10).unwrap();
+        assert_eq!(grid.width, 10);
+        assert_eq!(grid.height, 10);
+        assert_eq!(grid.height_map.len(), 100);
+        assert_eq!(grid.temperature_map.len(), 100);
+    }
+
+    #[test]
+    fn test_invalid_grid_creation() {
+        let result = Grid::new(0, 10);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_height_and_temperature_generation() {
+        let mut grid = Grid::new(10, 10).unwrap();
+        grid.generate();
+        for y in 0..10 {
+            for x in 0..10 {
+                let height = grid.get_height_at(x, y);
+                let temperature = grid.get_temperature_at(x, y);
+                assert!(height >= 0.0 && height <= 1.0);
+                assert!(temperature >= 0.0 && temperature <= 1.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_get_seed() {
+        let grid = Grid::new(10, 10).unwrap();
+        let seed = grid.get_seed();
+        assert!(seed == grid.seed);
+    }
 }

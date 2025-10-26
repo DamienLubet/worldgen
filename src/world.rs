@@ -1,5 +1,11 @@
-use crate::grid::Grid;
-use rand::prelude::*;
+use crate::grid::{Grid, GridError};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum WorldError {
+    #[error("Grid error: {0}")]
+    GridError(#[from] GridError),
+}
 
 #[derive(Debug)]
 pub struct World {
@@ -9,14 +15,15 @@ pub struct World {
 }
 
 impl World {
-    pub fn new(width: usize, height: usize) -> Self {
-        let grid = Grid::new(width, height);
+    pub fn new(width: usize, height: usize) -> Result<Self, WorldError> {
+        let mut grid = Grid::new(width, height).map_err(WorldError::GridError)?;
+        grid.generate();
 
-        Self {
+        Ok(Self {
             grid,
             width,
             height,
-        }
+        })
     }
 
     pub fn display(&self) {
