@@ -10,7 +10,7 @@ This project is mainly a way for me to **learn Rust** by building something fun 
 
 **Height map**  
 Defines the seas, continents and islands.
-![Height map](images/map1.png)
+![Height map](images/map2.png)
 
 **Temperature map**  
 Shows climate across the map based on latitude and noise.

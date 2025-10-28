@@ -3,7 +3,7 @@ use worldgen::world::World;
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    let world = World::new(1920, 1000)?;
+    let world = World::new(1900, 980)?;
     let app = WorldGenApp::new(world);
     let _ = eframe::run_native(
         "World Generation Biomes",

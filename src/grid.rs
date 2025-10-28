@@ -83,12 +83,22 @@ impl Grid {
 }
 
 fn elevation(x: f32, y: f32, width: f32, height: f32, noise: &NoiseGenerator) -> f32 {
-    // Elevation calculation based on the center of the map and noise
-    let elevation = noise.height_map(x, y);
-    let dx = (x - (width / 2.0)) / 2.0;
-    let dy = y - (height / 2.0);
-    let distance = ((dx * dx + dy * dy).sqrt()) / (width / 2.0) * 0.5;
-    (elevation - distance * 1.50).clamp(0.0, 1.0)
+    // Elevation calculation combining continent and detail noise with distance falloff
+    const SEA_LEVEL: f32 = 0.30; 
+    const MARGIN_X: f32 = 0.8;
+    const MARGIN_Y: f32 = 1.0;
+    const FALLOFF: f32 = 0.45;
+    const DETAIL_FACTOR: f32 = 0.425;
+    
+    let continent = noise.continent_map(x, y);
+
+    let distance = distance(x, y, width, height, MARGIN_X, MARGIN_Y);
+    let mut elevation = continent - distance * FALLOFF;
+    if SEA_LEVEL < elevation {
+        let detail = noise.detail_map(x, y);
+        elevation += detail * DETAIL_FACTOR;
+    }
+    elevation.clamp(0.0, 1.0)
 }
 
 fn temperature(x: f32, y: f32, height: f32, altitude: f32, noise: &NoiseGenerator) -> f32 {
@@ -100,11 +110,19 @@ fn temperature(x: f32, y: f32, height: f32, altitude: f32, noise: &NoiseGenerato
     (0.6 * lat_temp + 0.2 * alt_temp + 0.2 * noise_temp).clamp(0.0, 1.0)
 }
 
+fn distance(x: f32, y: f32, width: f32, height: f32, margin_x: f32, margin_y: f32) -> f32 {
+    let cx = (width - 1.0) * 0.5;
+    let cy = (height - 1.0) * 0.5;
+    let rx = cx / margin_x;
+    let ry = cy / margin_y;
+    let nx = ((x - cx) / rx).abs(); 
+    let ny = ((y - cy) / ry).abs();
+    ((nx * nx + ny * ny).sqrt()).min(1.0)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_grid_creation() {
         let grid = Grid::new(10, 10).unwrap();
@@ -113,13 +131,11 @@ mod tests {
         assert_eq!(grid.height_map.len(), 100);
         assert_eq!(grid.temperature_map.len(), 100);
     }
-
     #[test]
     fn test_invalid_grid_creation() {
         let result = Grid::new(0, 10);
         assert!(result.is_err());
     }
-
     #[test]
     fn test_height_and_temperature_generation() {
         let mut grid = Grid::new(10, 10).unwrap();
@@ -133,7 +149,6 @@ mod tests {
             }
         }
     }
-
     #[test]
     fn test_get_seed() {
         let grid = Grid::new(10, 10).unwrap();

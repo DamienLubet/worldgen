@@ -28,7 +28,7 @@ impl WorldGenApp {
         let mut pixels = vec![egui::Color32::BLACK; width * height];
 
         let water_level: f32 = 0.30;
-        let mountain_level: f32 = 0.60;
+        let mountain_level: f32 = 0.72;
 
         for i in 0..(width) {
             for j in 0..(height) {
@@ -36,24 +36,24 @@ impl WorldGenApp {
 
                 let base = if h < water_level {
                     egui::Color32::from_rgb(50, 120, 200)
-                } else if h > mountain_level {
+                } else if h < mountain_level {
+                    egui::Color32::from_rgb(34, 139, 34)
+                } else if h < 0.95 {
                     egui::Color32::from_rgb(87, 29, 29)
                 } else {
-                    egui::Color32::from_rgb(34, 139, 34)
+                    egui::Color32::from_rgb(255, 250, 250)
                 };
 
                 let final_color = if self.temperature {
                     let t = self.map.grid.get_temperature_at(i, j);
                     let overlay = if t < 0.25 {
                         egui::Color32::from_rgb(0, 0, 255)
-                    } else if t < 0.5 {
+                    } else if t < 0.60 {
                         egui::Color32::from_rgb(0, 255, 255)
                     } else if t < 0.75 {
                         egui::Color32::from_rgb(255, 255, 0)
-                    } else if t < 1.0 {
+                    } else{
                         egui::Color32::from_rgb(255, 0, 0)
-                    } else {
-                        egui::Color32::from_rgb(128, 128, 128)
                     };
                     egui::Color32::from_rgb(
                         ((base.r() as u16 + overlay.r() as u16) / 2) as u8,
@@ -65,7 +65,8 @@ impl WorldGenApp {
                 };
 
             pixels[j * width + i] = final_color;
-        }}
+            }
+        }
 
         let image = egui::ColorImage {
             size: [width, height],
@@ -102,7 +103,8 @@ impl eframe::App for WorldGenApp {
         egui::TopBottomPanel::top("top_controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!("Size: {}x{}", self.map.width, self.map.height));
-
+                ui.label(format!("Seed: {}", self.map.grid.get_seed()));
+               
                 if ui.button("New Map").clicked() {
                     match World::new(self.map.width, self.map.height) {
                         Ok(new_map) => {
@@ -114,7 +116,7 @@ impl eframe::App for WorldGenApp {
                     }
                     self.dirty = true;
                 }
-                if ui.button("Toggle Temperature").clicked() {
+                if ui.button("Show Temperature").clicked() {
                     self.temperature = !self.temperature;
                     self.dirty = true;
                 }
