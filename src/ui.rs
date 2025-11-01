@@ -32,6 +32,8 @@ impl WorldGenApp {
 
         for i in 0..(width) {
             for j in 0..(height) {
+                if self.map.grid.neighbors_is_sea(i, j) { continue; }
+
                 let h = self.map.grid.get_height_at(i, j);
 
                 let base = if h < water_level {
@@ -73,11 +75,12 @@ impl WorldGenApp {
             source_size: egui::vec2(width as f32, height as f32),
             pixels,
         };
-        let tex = ctx.load_texture("world_map", image, egui::TextureOptions::NEAREST);
+        let tex = ctx.load_texture("world_map", image, egui::TextureOptions::LINEAR);
         self.texture = Some(tex);
         self.dirty = false;
     }
 }
+
 
 impl eframe::App for WorldGenApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {

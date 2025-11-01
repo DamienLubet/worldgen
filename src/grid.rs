@@ -80,6 +80,23 @@ impl Grid {
     pub fn get_seed(&self) -> u32 {
         self.seed
     }
+
+    pub fn neighbors_is_sea(&self, x: usize, y: usize) -> bool {
+        // Check if there is at least one neighbor below sea level
+        if self.get_height_at(x, y) < 0.30 { return false; } // Skip if current is sea
+        let x_min = if x > 0 { x - 1 } else { x };
+        let y_min = if y > 0 { y - 1 } else { y };
+        let x_max = (x + 1).min(self.width - 1);
+        let y_max = (y + 1).min(self.height - 1);
+        
+        for neighbors_x in x_min..=x_max {
+            for neighbors_y in y_min..=y_max{
+                if neighbors_x == x || neighbors_y == y { continue; }
+                if self.get_height_at(neighbors_x, neighbors_y) < 0.30 { return true; } 
+            }
+        }
+        false
+    }
 }
 
 fn elevation(x: f32, y: f32, width: f32, height: f32, noise: &NoiseGenerator) -> f32 {
